@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <string name="app_name">LoadPicture</string>
+    <string name="hello_world">Hello world!</string>
+    <string name="action_settings">Settings</string>
+    <string name="client_id">iwU48WrqHvS2AIONxDZ58GSD</string>
+    <string name="tran_URL">http://openapi.baidu.com/public/2.0/bmt/translate</string>
+    
+</resources>
