@@ -1,150 +1,79 @@
 package com.example.loadpicture;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.UnsupportedEncodingException;
-import java.net.HttpURLConnection;
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.util.ArrayList;
-import java.util.List;
-
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
+import java.util.Locale;
 
 import android.app.Activity;
-import android.app.ActionBar;
-import android.app.Fragment;
-import android.os.AsyncTask;
+import android.graphics.Color;
 import android.os.Bundle;
-import android.util.JsonReader;
-import android.util.Log;
-import android.view.LayoutInflater;
-import android.view.Menu;
-import android.view.MenuItem;
-import android.view.View;
-import android.view.ViewGroup;
-import android.widget.Button;
-import android.widget.EditText;
+import android.util.TypedValue;
+import android.view.Gravity;
+import android.widget.FrameLayout;
 import android.widget.TextView;
-import android.widget.Toast;
-import android.os.Build;
 
-public class MainActivity extends Activity {
+import com.example.loadpicture.game.GameSurfaceView;
+import com.example.loadpicture.game.RunnerRenderer;
 
-	private TextView text;
-	private String urlstring;
-	private EditText input;
-	private Button button;
+public class MainActivity extends Activity implements RunnerRenderer.GameHudListener {
 
-	@Override
-	protected void onCreate(Bundle savedInstanceState) {
-		super.onCreate(savedInstanceState);
-		setContentView(R.layout.activity_main);
-		text = (TextView) findViewById(R.id.textView1);
-		input = (EditText)findViewById(R.id.editText1);
-        button = (Button)findViewById(R.id.button1);
-        
-        button.setOnClickListener(new View.OnClickListener() {
-			
-			@Override
-			public void onClick(View arg0) {
-				// TODO Auto-generated method stub
-				byte[] data = {'l'};
-				try {
-					urlstring = new String(data,"UTF-8");     //如何设置呢？？？？
-				} catch (UnsupportedEncodingException e1) {
-					// TODO Auto-generated catch block
-					e1.printStackTrace();
-				}
-				urlstring = getResources().getString(R.string.tran_URL) + "?client_id="
-						+ getResources().getString(R.string.client_id) + "&q=";
-				CharSequence text_input =  input.getText();//     要不要检测
-				Toast.makeText(getApplicationContext(), text_input, Toast.LENGTH_SHORT).show();
-		        urlstring = urlstring.concat(text_input.toString());
-		        urlstring = urlstring.concat("&from=auto&to=auto");
-				try {
-					TranTask task = new TranTask();
-					task.execute(new URL(urlstring));
-				} catch (MalformedURLException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				}
-			}
-		});
-		
-	}
+    private GameSurfaceView gameSurfaceView;
+    private TextView hudView;
 
-	public class TranTask extends AsyncTask<URL, Integer, String> {
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
 
-		@Override
-		protected String doInBackground(URL... arg0) {
-			// TODO Auto-generated method stub
-			List messages = new ArrayList();
-			String temp;
-			try {
-				HttpURLConnection conn = (HttpURLConnection) arg0[0]
-						.openConnection();
-				
-				conn.setConnectTimeout(10000);
-				conn.setDoInput(true);
-				conn.setRequestMethod("GET");
-				conn.connect();
-				int response = conn.getResponseCode();
-				Log.d("DEBUG_TAG", "The response is: " + response);
-				InputStream is = conn.getInputStream();
+        FrameLayout root = new FrameLayout(this);
 
-				InputStreamReader read = new InputStreamReader(is, "UTF-8");
-				ArrayList T = new ArrayList();
-				char[] buffer = new char[1000];
-				read.read(buffer);
-				temp = new String(buffer); 
-				Log.d("MESSAGE", temp);    //显示收到服务器的消息.
-				try {
-					JSONObject obj = new JSONObject(temp);
-					JSONArray arr = obj.getJSONArray("trans_result");
-					JSONObject obj_in = arr.getJSONObject(0);
-					messages.add(obj_in.getString("dst")); // 翻译结果第一行
-				} catch (JSONException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				}
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-			return (String) messages.get(0);
-		}
+        gameSurfaceView = new GameSurfaceView(this);
+        root.addView(gameSurfaceView, new FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.MATCH_PARENT));
 
-		@Override
-		protected void onPostExecute(String result) {
-			// TODO Auto-generated method stub
-			text.setText(result);
-			super.onPostExecute(result);
-		}
+        hudView = new TextView(this);
+        hudView.setTextColor(Color.WHITE);
+        hudView.setShadowLayer(6f, 2f, 2f, Color.BLACK);
+        hudView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 18);
+        hudView.setPadding(24, 24, 24, 24);
+        hudView.setGravity(Gravity.START);
+        hudView.setText("Score: 0\nSpeed: 0.0");
 
-	}
+        FrameLayout.LayoutParams hudParams = new FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.WRAP_CONTENT,
+                FrameLayout.LayoutParams.WRAP_CONTENT,
+                Gravity.TOP | Gravity.START);
+        root.addView(hudView, hudParams);
 
-	@Override
-	public boolean onCreateOptionsMenu(Menu menu) {
+        setContentView(root);
 
-		// Inflate the menu; this adds items to the action bar if it is present.
-		getMenuInflater().inflate(R.menu.main, menu);
-		return true;
-	}
+        gameSurfaceView.setHudListener(this);
+    }
 
-	@Override
-	public boolean onOptionsItemSelected(MenuItem item) {
-		// Handle action bar item clicks here. The action bar will
-		// automatically handle clicks on the Home/Up button, so long
-		// as you specify a parent activity in AndroidManifest.xml.
-		int id = item.getItemId();
-		if (id == R.id.action_settings) {
-			return true;
-		}
-		return super.onOptionsItemSelected(item);
-	}
+    @Override
+    protected void onResume() {
+        super.onResume();
+        gameSurfaceView.onResume();
+    }
 
+    @Override
+    protected void onPause() {
+        gameSurfaceView.onPause();
+        super.onPause();
+    }
+
+    @Override
+    public void onHudUpdated(final int score, final float speed, final boolean crashed) {
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                StringBuilder builder = new StringBuilder();
+                builder.append(String.format(Locale.US, "Score: %d", score));
+                builder.append('\n');
+                builder.append(String.format(Locale.US, "Speed: %.1f", speed));
+                if (crashed) {
+                    builder.append("\nCrash! Auto restart...");
+                }
+                hudView.setText(builder.toString());
+            }
+        });
+    }
 }
